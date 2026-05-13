@@ -22,6 +22,15 @@ export default function TeacherDashboard({ teacher, students }: Props) {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
 
+  // 비밀번호 변경 모달 상태
+  const [showPwModal, setShowPwModal] = useState(false)
+  const [currentPw, setCurrentPw] = useState('')
+  const [newPw, setNewPw] = useState('')
+  const [confirmPw, setConfirmPw] = useState('')
+  const [pwError, setPwError] = useState('')
+  const [pwSuccess, setPwSuccess] = useState(false)
+  const [pwLoading, setPwLoading] = useState(false)
+
   const filteredStudents = students.filter(s =>
     s.name.includes(searchQuery) || s.student_id.includes(searchQuery)
   )
@@ -77,6 +86,44 @@ export default function TeacherDashboard({ teacher, students }: Props) {
     router.push('/login')
   }
 
+  async function handleChangePassword(e: React.FormEvent) {
+    e.preventDefault()
+    setPwError('')
+    if (newPw !== confirmPw) {
+      setPwError('새 비밀번호가 일치하지 않습니다')
+      return
+    }
+    if (newPw.length < 4) {
+      setPwError('새 비밀번호는 4자 이상이어야 합니다')
+      return
+    }
+    setPwLoading(true)
+    const res = await fetch('/api/auth/change-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ currentPassword: currentPw, newPassword: newPw }),
+    })
+    const data = await res.json()
+    setPwLoading(false)
+    if (!res.ok) {
+      setPwError(data.error ?? '비밀번호 변경에 실패했습니다')
+      return
+    }
+    setPwSuccess(true)
+    setCurrentPw('')
+    setNewPw('')
+    setConfirmPw('')
+  }
+
+  function closePwModal() {
+    setShowPwModal(false)
+    setPwError('')
+    setPwSuccess(false)
+    setCurrentPw('')
+    setNewPw('')
+    setConfirmPw('')
+  }
+
   const registeredIds = new Set(registrations.map(r => r.online_course_id))
   const filteredOnline = onlineCourses.filter(c => c.offering_type === offeringTab)
 
@@ -94,9 +141,17 @@ export default function TeacherDashboard({ teacher, students }: Props) {
             {teacher.role === 'homeroom' && ` (${teacher.grade}학년 ${teacher.class_number}반 담임)`}
           </span>
         </div>
-        <button onClick={handleLogout} className="text-xs text-blue-200 hover:text-white transition-colors">
-          로그아웃
-        </button>
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setShowPwModal(true)}
+            className="text-xs text-blue-200 hover:text-white transition-colors border border-blue-500 px-2.5 py-1 rounded-md"
+          >
+            비밀번호 변경
+          </button>
+          <button onClick={handleLogout} className="text-xs text-blue-200 hover:text-white transition-colors">
+            로그아웃
+          </button>
+        </div>
       </header>
 
       <div className="flex flex-1 overflow-hidden">
@@ -108,7 +163,7 @@ export default function TeacherDashboard({ teacher, students }: Props) {
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               placeholder="이름/학번 검색"
-              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500"
+              className="w-full border border-gray-200 rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-blue-500 text-gray-900 bg-white"
             />
           </div>
           <div className="flex-1 overflow-y-auto">
@@ -281,6 +336,83 @@ export default function TeacherDashboard({ teacher, students }: Props) {
           </div>
         </section>
       </div>
+
+      {/* 비밀번호 변경 모달 */}
+      {showPwModal && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
+          <div className="bg-white rounded-2xl shadow-xl w-full max-w-sm mx-4 p-6">
+            <h2 className="text-lg font-bold text-gray-900 mb-4">비밀번호 변경</h2>
+
+            {pwSuccess ? (
+              <div className="text-center py-4">
+                <p className="text-green-600 font-medium mb-4">비밀번호가 성공적으로 변경되었습니다.</p>
+                <button
+                  onClick={closePwModal}
+                  className="w-full bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors"
+                >
+                  닫기
+                </button>
+              </div>
+            ) : (
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">현재 비밀번호</label>
+                  <input
+                    type="password"
+                    value={currentPw}
+                    onChange={e => setCurrentPw(e.target.value)}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">새 비밀번호</label>
+                  <input
+                    type="password"
+                    value={newPw}
+                    onChange={e => setNewPw(e.target.value)}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1.5">새 비밀번호 확인</label>
+                  <input
+                    type="password"
+                    value={confirmPw}
+                    onChange={e => setConfirmPw(e.target.value)}
+                    required
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 text-gray-900 bg-white"
+                  />
+                </div>
+
+                {pwError && (
+                  <p className="text-sm text-red-600 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    {pwError}
+                  </p>
+                )}
+
+                <div className="flex gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={closePwModal}
+                    className="flex-1 py-2.5 rounded-lg text-sm font-medium border border-gray-300 text-gray-700 hover:bg-gray-50 transition-colors"
+                  >
+                    취소
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={pwLoading}
+                    className="flex-1 bg-blue-700 text-white py-2.5 rounded-lg text-sm font-medium hover:bg-blue-800 transition-colors disabled:opacity-50"
+                  >
+                    {pwLoading ? '변경 중...' : '변경'}
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   )
 }

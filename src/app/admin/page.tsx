@@ -7,16 +7,25 @@ import AdminDashboard from '@/components/AdminDashboard'
 interface StudentRow { id: string; student_id: string; name: string; grade: string; class_number: string; gender: string; cohort_year: string; track: string }
 interface OnlineRow { id: string; course_name: string; subject_group: string; course_type: string; credits: string; curriculum_revision: string; offering_type: string; prerequisite: string; available_grade: string; available_semester: string }
 interface RegRow { id: string; student_id: string; online_course_id: string; offering_type: string; registered_by: string; status: string; created_at: string; updated_at: string }
+interface TeacherRow { teacher_code: string; password: string; role: string; grade: string; class_number: string }
+
+export interface TeacherInfo {
+  teacher_code: string
+  role: string
+  grade: string
+  class_number: string
+}
 
 export default async function AdminPage() {
   const session = await getSession()
   if (!session) redirect('/login')
   if (session.role !== 'admin') redirect('/teacher')
 
-  const [studentRows, onlineRows, regRows] = await Promise.all([
+  const [studentRows, onlineRows, regRows, teacherRows] = await Promise.all([
     getSheetRows('students'),
     getSheetRows('online_courses'),
     getSheetRows('registrations'),
+    getSheetRows('teachers'),
   ])
 
   const studentMap = new Map<string, Student>(
@@ -54,5 +63,12 @@ export default async function AdminPage() {
       online_courses: courseMap.get(r.online_course_id),
     }))
 
-  return <AdminDashboard registrations={registrations} />
+  const teachers: TeacherInfo[] = parseRows<TeacherRow>(teacherRows).map(r => ({
+    teacher_code: r.teacher_code,
+    role: r.role,
+    grade: r.grade,
+    class_number: r.class_number,
+  }))
+
+  return <AdminDashboard registrations={registrations} teachers={teachers} />
 }
