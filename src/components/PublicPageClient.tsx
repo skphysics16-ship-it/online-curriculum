@@ -23,9 +23,10 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
   const [grade, setGrade] = useState<Grade>('3학년(2015)')
   const [pdfYear, setPdfYear] = useState<'2015' | '2022'>('2015')
 
+  const EXCLUDE_FROM_2022_GRADES = ['고급 물리학', '고급 생명과학']
   const courses = grade === '3학년(2015)' ? courses2015
-    : grade === '1학년(2022)' ? courses2022.filter(c => c.available_grade === 1 || c.available_grade === null)
-    : courses2022.filter(c => c.available_grade === 2 || c.available_grade === null)
+    : grade === '1학년(2022)' ? courses2022.filter(c => (c.available_grade === 1 || c.available_grade === null) && !EXCLUDE_FROM_2022_GRADES.includes(c.course_name))
+    : courses2022.filter(c => (c.available_grade === 2 || c.available_grade === null) && !EXCLUDE_FROM_2022_GRADES.includes(c.course_name))
   const filtered = tab === '안내' ? [] : courses.filter(c => c.offering_type === '개설형')
 
   const grouped = filtered.reduce<Record<string, OnlineCourse[]>>((acc, c) => {
