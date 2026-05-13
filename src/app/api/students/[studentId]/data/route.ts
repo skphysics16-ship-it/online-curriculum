@@ -8,7 +8,8 @@ interface SchoolRow { course_name: string; cohort_year: string; is_opened: strin
 interface OnlineRow {
   id: string; course_name: string; subject_group: string; course_type: string;
   credits: string; curriculum_revision: string; offering_type: string;
-  prerequisite: string; available_grade: string; available_semester: string
+  prerequisite: string; available_grade: string; available_semester: string;
+  is_school_opened: string
 }
 interface RegRow {
   id: string; student_id: string; online_course_id: string; offering_type: string;
@@ -60,7 +61,7 @@ export async function GET(
       .map(c => c.course_name)
   )
 
-  // 온라인 과목 전체 (조인용)
+  // 온라인 과목 전체 (조인용) - is_school_opened 포함
   const allOnline = parseRows<OnlineRow>(onlineRows).map(c => ({
     id: c.id,
     course_name: c.course_name,
@@ -72,12 +73,14 @@ export async function GET(
     prerequisite: c.prerequisite || null,
     available_grade: c.available_grade ? Number(c.available_grade) : null,
     available_semester: c.available_semester ? Number(c.available_semester) : null,
+    // 시트에 컬럼이 없는 경우 school_courses에서 교차 검증
+    is_school_opened: c.is_school_opened === 'true' || openedNames.has(c.course_name),
   }))
 
-  // 학생이 신청 가능한 과목 (이수 안 했고, 학교에서 개설 안 된 과목)
+  // 이수하지 않은 과목 (학교 개설 과목도 포함하여 신청 불가 표시 가능하도록)
   const availableOnlineCourses = allOnline
     .filter(c => Number(c.curriculum_revision) === revision)
-    .filter(c => !completedNames.has(c.course_name) && !openedNames.has(c.course_name))
+    .filter(c => !completedNames.has(c.course_name))
     .sort((a, b) => {
       if (a.offering_type !== b.offering_type) return a.offering_type.localeCompare(b.offering_type)
       if ((a.subject_group ?? '') !== (b.subject_group ?? ''))

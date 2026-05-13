@@ -42,6 +42,7 @@ export interface OnlineCourse {
   prerequisite: string | null
   available_grade: number | null
   available_semester: number | null
+  is_school_opened: boolean
 }
 
 export interface Registration {

@@ -5,7 +5,7 @@ import type { Registration, Student, OnlineCourse } from '@/types'
 import AdminDashboard from '@/components/AdminDashboard'
 
 interface StudentRow { id: string; student_id: string; name: string; grade: string; class_number: string; gender: string; cohort_year: string; track: string }
-interface OnlineRow { id: string; course_name: string; subject_group: string; course_type: string; credits: string; curriculum_revision: string; offering_type: string; prerequisite: string; available_grade: string; available_semester: string }
+interface OnlineRow { id: string; course_name: string; subject_group: string; course_type: string; credits: string; curriculum_revision: string; offering_type: string; prerequisite: string; available_grade: string; available_semester: string; is_school_opened: string }
 interface RegRow { id: string; student_id: string; online_course_id: string; offering_type: string; registered_by: string; status: string; created_at: string; updated_at: string }
 interface TeacherRow { teacher_code: string; password: string; role: string; grade: string; class_number: string }
 
@@ -45,6 +45,7 @@ export default async function AdminPage() {
       prerequisite: r.prerequisite || null,
       available_grade: r.available_grade ? Number(r.available_grade) : null,
       available_semester: r.available_semester ? Number(r.available_semester) : null,
+      is_school_opened: r.is_school_opened === 'true',
     }])
   )
 

@@ -21,6 +21,15 @@ import * as fs from 'fs'
 import { createHash } from 'crypto'
 import { google } from 'googleapis'
 
+// .env.local 로드
+const envPath = path.join(__dirname, '..', '.env.local')
+if (fs.existsSync(envPath)) {
+  fs.readFileSync(envPath, 'utf8').split('\n').forEach(line => {
+    const m = line.match(/^([^=]+)=(.*)$/)
+    if (m) process.env[m[1]] = m[2].replace(/^"|"$/g, '')
+  })
+}
+
 // ── 환경변수 체크 ────────────────────────────────────────────────
 const SPREADSHEET_ID = process.env.GOOGLE_SPREADSHEET_ID
 const SA_EMAIL = process.env.GOOGLE_SERVICE_ACCOUNT_EMAIL
@@ -60,6 +69,11 @@ function stableId(...parts: (string | number)[]): string {
   return createHash('md5').update(parts.join('::')).digest('hex')
 }
 
+function cleanCourseName(name: string): string {
+  // 한글, 영문, 숫자, 로마 숫자(Ⅰ~ⅿ) 허용
+  return name.replace(/[^가-힣ㄱ-ㅎㅏ-ㅣa-zA-Z0-9Ⅰ-ⅿ ]/g, '').trim()
+}
+
 function readSheet(filePath: string, sheetName: string): unknown[][] {
   const wb = XLSX.readFile(filePath)
   const ws = wb.Sheets[sheetName]
@@ -75,10 +89,14 @@ function getGrade(studentId: string): number {
   return parseInt(studentId[0], 10)
 }
 
-const DATA_DIR = path.join(__dirname, '..', '..', '..')
+const DATA_DIR = path.join(__dirname, '..', '..')
 
 // ── 1. 학생 데이터 임포트 ─────────────────────────────────────────
-async function importStudents(filePath: string, cohortYear: number, grade: number, curriculumRevision: number) {
+async function importStudents(filePath: string, cohortYear: number, grade: number, curriculumRevision: number): Promise<{
+  studentRows: (string | number | null)[][]
+  completedRows: (string | number | null)[][]
+  schoolRows: (string | number | boolean | null)[][]
+}> {
   console.log(`\n📥 학생 데이터 임포트: ${cohortYear}년 입학생 (현 ${grade}학년)`)
 
   const sheetName = `${cohortYear} 입학생 학생별 2학년 선택과목`
@@ -88,7 +106,8 @@ async function importStudents(filePath: string, cohortYear: number, grade: numbe
   // 공통과목
   const commonSheetName = `${cohortYear} 입학생 공통과목`
   const commonRows = readSheet(filePath, commonSheetName)
-  const commonCourses = commonRows.slice(1).map(r => (r as unknown[])[0] as string).filter(Boolean)
+  // 공통과목 시트는 헤더 행 없이 바로 과목명이 시작되므로 slice 없이 전체 사용
+  const commonCourses = commonRows.map(r => (r as unknown[])[0]).filter(Boolean).map(v => cleanCourseName(v as string)).filter(Boolean)
 
   // 3학년 선택과목 시트
   const grade3SheetName = `${cohortYear} 입학생 학생별 3학년 선택과목`
@@ -130,8 +149,9 @@ async function importStudents(filePath: string, cohortYear: number, grade: numbe
     courseValues.forEach((val, idx) => {
       const courseName = courseHeaderRow[idx + 4]
       if (val === 1 && courseName) {
-        openedCoursesSet.add(String(courseName))
-        completedRows.push([stableId(studentId, String(courseName)), studentId, String(courseName), '선택', 2, null])
+        const cleanedName = cleanCourseName(String(courseName))
+        openedCoursesSet.add(cleanedName)
+        completedRows.push([stableId(studentId, cleanedName), studentId, cleanedName, '선택', 2, null])
       }
     })
   }
@@ -144,8 +164,9 @@ async function importStudents(filePath: string, cohortYear: number, grade: numbe
     courseValues.forEach((val, idx) => {
       const courseName = grade3CourseHeaders[idx]
       if (val === 1 && courseName) {
-        openedCoursesSet.add(courseName)
-        completedRows.push([stableId(studentId, courseName), studentId, courseName, '선택', 3, null])
+        const cleanedName = cleanCourseName(courseName)
+        openedCoursesSet.add(cleanedName)
+        completedRows.push([stableId(studentId, cleanedName), studentId, cleanedName, '선택', 3, null])
       }
     })
   }
@@ -157,7 +178,7 @@ async function importStudents(filePath: string, cohortYear: number, grade: numbe
     .filter(r => (r as unknown[])[1])
     .map(r => {
       const row = r as unknown[]
-      const courseName = String(row[1])
+      const courseName = cleanCourseName(String(row[1]))
       return [
         stableId(cohortYear, courseName),
         courseName,
@@ -168,16 +189,8 @@ async function importStudents(filePath: string, cohortYear: number, grade: numbe
       ]
     })
 
-  console.log(`  학생 ${studentRows.length}명 저장 중...`)
-  await writeSheet('students', ['id', 'student_id', 'name', 'gender', 'cohort_year', 'grade', 'class_number', 'track'], studentRows)
-
-  console.log(`  이수 과목 ${completedRows.length}건 저장 중...`)
-  await writeSheet('student_completed_courses', ['id', 'student_id', 'course_name', 'course_category', 'grade', 'semester'], completedRows)
-
-  console.log(`  학교 편제 과목 ${schoolRows.length}건 저장 중...`)
-  await writeSheet('school_courses', ['id', 'course_name', 'course_type', 'cohort_year', 'curriculum_revision', 'is_opened'], schoolRows)
-
-  console.log('  ✅ 완료')
+  console.log(`  학생 ${studentRows.length}명 수집, 이수 과목 ${completedRows.length}건 수집, 편제 과목 ${schoolRows.length}건 수집`)
+  return { studentRows, completedRows, schoolRows }
 }
 
 // ── 2. 온라인 교과 임포트 ─────────────────────────────────────────
@@ -207,73 +220,89 @@ async function importOnlineCourses(filePath: string) {
     })
   }
 
-  const onlineRows: (string | number | null)[][] = []
+  const onlineRows: (string | number | boolean | null)[][] = []
 
-  // 2015 개설교과
+  // 2015 개설교과 (학교 개설 과목도 포함하되 is_school_opened=true 표시)
   const rows2015Open = readSheet(filePath, '2015 개설교과')
   let currentSubjectGroup = ''
   rows2015Open.slice(3).forEach(row => {
     const r = row as unknown[]
     if (r[0]) currentSubjectGroup = String(r[0])
-    const courseName = r[2] ? String(r[2]).trim() : null
+    const courseName = r[2] ? cleanCourseName(String(r[2])) : null
     if (!courseName) return
-    if (openedNames2024.has(courseName)) return
     onlineRows.push([
       stableId(2015, courseName), courseName, currentSubjectGroup || null,
       r[1] ? String(r[1]) : null, r[3] ? Number(r[3]) : null,
       2015, '개설형', r[4] ? String(r[4]) : null, null, null,
+      openedNames2024.has(courseName),
     ])
   })
 
-  // 2015 전체 교과 → 주문형
+  // 2015 전체 교과 → 주문형 (개설형에 없는 과목, 학교 개설 여부 표시)
   const rows2015All = readSheet(filePath, '2015 교과')
   const opened2015 = new Set(onlineRows.filter(r => r[5] === 2015 && r[6] === '개설형').map(r => r[1] as string))
+  let current2015Group = ''
   rows2015All.slice(3).forEach(row => {
     const r = row as unknown[]
-    const cells = [r[2], r[3], r[4], r[5]].filter(Boolean).map(v => String(v))
-    cells.forEach(cell => {
-      cell.split(/[,，\n]/).map(s => s.trim()).filter(Boolean).forEach(courseName => {
-        if (opened2015.has(courseName) || openedNames2024.has(courseName)) return
+    if (r[0]) current2015Group = String(r[0])
+    const columnMap: [unknown, string][] = [
+      [r[1], '일반 선택'],
+      [r[3], '진로 선택'],
+    ]
+    columnMap.forEach(([cell, courseType]) => {
+      if (!cell) return
+      String(cell).split(/[,，\n]/).map(s => cleanCourseName(s)).filter(Boolean).forEach(courseName => {
+        if (opened2015.has(courseName)) return
         if (onlineRows.some(c => c[1] === courseName && c[5] === 2015)) return
         onlineRows.push([
-          stableId(2015, courseName), courseName, r[1] ? String(r[1]) : null,
-          null, null, 2015, '주문형', null, null, null,
+          stableId(2015, courseName), courseName, current2015Group || null,
+          courseType, null, 2015, '주문형', null, null, null,
+          openedNames2024.has(courseName),
         ])
       })
     })
   })
 
-  // 2022 개설교과
+  // 2022 개설교과 (학교 개설 과목도 포함하되 is_school_opened=true 표시)
   const rows2022Open = readSheet(filePath, '2022 개설교과')
   let currentGroup2022 = ''
   rows2022Open.slice(4).forEach(row => {
     const r = row as unknown[]
     if (r[0]) currentGroup2022 = String(r[0])
-    const courseName = r[2] ? String(r[2]).trim() : null
+    const courseName = r[2] ? cleanCourseName(String(r[2])) : null
     if (!courseName) return
-    if (openedNames2025.has(courseName)) return
     const availGrade = r[4] ? 1 : r[5] ? 2 : null
     onlineRows.push([
       stableId(2022, courseName), courseName, currentGroup2022 || null,
       r[1] ? String(r[1]) : null, r[3] ? Number(r[3]) : null,
       2022, '개설형', r[6] ? String(r[6]) : null,
       availGrade, availGrade ? 2 : null,
+      openedNames2025.has(courseName),
     ])
   })
 
-  // 2022 전체 교과 → 주문형
+  // 2022 전체 교과 → 주문형 (개설형에 없는 과목, 학교 개설 여부 표시)
   const rows2022All = readSheet(filePath, '2022 교과')
   const opened2022 = new Set(onlineRows.filter(r => r[5] === 2022 && r[6] === '개설형').map(r => r[1] as string))
+  let current2022Group = ''
   rows2022All.slice(3).forEach(row => {
     const r = row as unknown[]
-    const cells = [r[1], r[2], r[3], r[4], r[5], r[6]].filter(Boolean).map(v => String(v))
-    cells.forEach(cell => {
-      cell.split(/[,，\n]/).map(s => s.trim()).filter(Boolean).forEach(courseName => {
-        if (opened2022.has(courseName) || openedNames2025.has(courseName)) return
+    if (r[0]) current2022Group = String(r[0])
+    const columnMap: [unknown, string][] = [
+      [r[1], '공통 과목'],
+      [r[2], '일반 선택'],
+      [r[3], '진로 선택'],
+      [r[5], '융합 선택'],
+    ]
+    columnMap.forEach(([cell, courseType]) => {
+      if (!cell) return
+      String(cell).split(/[,，\n]/).map(s => cleanCourseName(s)).filter(Boolean).forEach(courseName => {
+        if (opened2022.has(courseName)) return
         if (onlineRows.some(c => c[1] === courseName && c[5] === 2022)) return
         onlineRows.push([
-          stableId(2022, courseName), courseName, r[0] ? String(r[0]) : null,
-          null, null, 2022, '주문형', null, null, null,
+          stableId(2022, courseName), courseName, current2022Group || null,
+          courseType, null, 2022, '주문형', null, null, null,
+          openedNames2025.has(courseName),
         ])
       })
     })
@@ -283,6 +312,7 @@ async function importOnlineCourses(filePath: string) {
   await writeSheet('online_courses', [
     'id', 'course_name', 'subject_group', 'course_type', 'credits',
     'curriculum_revision', 'offering_type', 'prerequisite', 'available_grade', 'available_semester',
+    'is_school_opened',
   ], onlineRows)
   console.log('  ✅ 완료')
 }
@@ -299,8 +329,22 @@ async function main() {
     if (!fs.existsSync(f)) { console.error(`파일 없음: ${f}`); process.exit(1) }
   }
 
-  await importStudents(file2024, 2024, 3, 2015)
-  await importStudents(file2025, 2025, 2, 2022)
+  const data2024 = await importStudents(file2024, 2024, 3, 2015)
+  const data2025 = await importStudents(file2025, 2025, 2, 2022)
+
+  const allStudentRows = [...data2024.studentRows, ...data2025.studentRows]
+  const allCompletedRows = [...data2024.completedRows, ...data2025.completedRows]
+  const allSchoolRows = [...data2024.schoolRows, ...data2025.schoolRows]
+
+  console.log(`\n💾 학생 ${allStudentRows.length}명 저장 중...`)
+  await writeSheet('students', ['id', 'student_id', 'name', 'gender', 'cohort_year', 'grade', 'class_number', 'track'], allStudentRows)
+
+  console.log(`💾 이수 과목 ${allCompletedRows.length}건 저장 중...`)
+  await writeSheet('student_completed_courses', ['id', 'student_id', 'course_name', 'course_category', 'grade', 'semester'], allCompletedRows)
+
+  console.log(`💾 학교 편제 과목 ${allSchoolRows.length}건 저장 중...`)
+  await writeSheet('school_courses', ['id', 'course_name', 'course_type', 'cohort_year', 'curriculum_revision', 'is_opened'], allSchoolRows)
+
   await importOnlineCourses(fileOnline)
 
   console.log('\n=== 임포트 완료 ===')

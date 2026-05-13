@@ -296,21 +296,27 @@ export default function TeacherDashboard({ teacher, students }: Props) {
                 {filteredOnline.map(course => {
                   const isRegistered = registeredIds.has(course.id)
                   const reg = registrations.find(r => r.online_course_id === course.id)
+                  const isSchoolOpened = course.is_school_opened
                   return (
                     <div
                       key={course.id}
                       className={`flex items-center justify-between px-3 py-2.5 rounded-lg border text-xs transition-colors ${
-                        isRegistered ? 'bg-blue-50 border-blue-200' : 'bg-white border-gray-100 hover:border-gray-200'
+                        isRegistered ? 'bg-blue-50 border-blue-200'
+                        : isSchoolOpened ? 'bg-gray-50 border-gray-100 opacity-70'
+                        : 'bg-white border-gray-100 hover:border-gray-200'
                       }`}
                     >
                       <div className="flex-1 min-w-0 mr-2">
-                        <p className={`font-medium truncate ${isRegistered ? 'text-blue-800' : 'text-gray-800'}`}>
+                        <p className={`font-medium truncate ${isRegistered ? 'text-blue-800' : isSchoolOpened ? 'text-gray-400' : 'text-gray-800'}`}>
                           {course.course_name}
+                          {isSchoolOpened && (
+                            <span className="ml-1.5 text-xs font-normal bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full">학교 개설</span>
+                          )}
                         </p>
                         <p className="text-gray-400 mt-0.5">
                           {course.subject_group ?? ''}
                           {course.credits && ` · ${course.credits}학점`}
-                          {course.prerequisite && ` · 선이수: ${course.prerequisite}`}
+                          {!isSchoolOpened && course.prerequisite && ` · 선이수: ${course.prerequisite}`}
                         </p>
                       </div>
                       {isRegistered ? (
@@ -320,6 +326,10 @@ export default function TeacherDashboard({ teacher, students }: Props) {
                         >
                           취소
                         </button>
+                      ) : isSchoolOpened ? (
+                        <span className="shrink-0 px-2.5 py-1 text-xs text-gray-400 border border-gray-200 rounded-md bg-gray-50">
+                          신청 불가
+                        </span>
                       ) : (
                         <button
                           onClick={() => handleRegister(course)}

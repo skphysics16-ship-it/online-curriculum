@@ -176,8 +176,13 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
                         </thead>
                         <tbody className="divide-y divide-gray-50">
                           {items.map(c => (
-                            <tr key={c.id} className="hover:bg-gray-50 transition-colors">
-                              <td className="px-4 py-2.5 font-medium text-gray-900 text-base whitespace-nowrap overflow-hidden text-ellipsis">{c.course_name}</td>
+                            <tr key={c.id} className={`transition-colors ${c.is_school_opened ? 'bg-gray-50 opacity-70' : 'hover:bg-gray-50'}`}>
+                              <td className="px-4 py-2.5 text-base whitespace-nowrap overflow-hidden text-ellipsis">
+                                <span className={`font-medium ${c.is_school_opened ? 'text-gray-400' : 'text-gray-900'}`}>{c.course_name}</span>
+                                {c.is_school_opened && (
+                                  <span className="ml-2 text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded-full">학교 개설</span>
+                                )}
+                              </td>
                               <td className="px-3 py-2.5 text-center">
                                 <span className="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full">
                                   {c.course_type ?? '-'}
@@ -187,7 +192,7 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
                                 {c.credits ?? '-'}
                               </td>
                               <td className="px-3 py-2.5 text-gray-500 text-xs">
-                                {c.prerequisite ?? '-'}
+                                {c.is_school_opened ? '신청 불가 (학교 개설 과목)' : (c.prerequisite ?? '-')}
                               </td>
                             </tr>
                           ))}
