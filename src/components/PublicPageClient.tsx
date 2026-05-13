@@ -21,11 +21,12 @@ function subjectIndex(group: string) {
 export default function PublicPageClient({ courses2015, courses2022 }: Props) {
   const [tab, setTab] = useState<Tab>('안내')
   const [grade, setGrade] = useState<Grade>('3학년(2015)')
+  const [pdfYear, setPdfYear] = useState<'2015' | '2022'>('2015')
 
   const courses = grade === '3학년(2015)' ? courses2015
     : grade === '1학년(2022)' ? courses2022.filter(c => c.available_grade === 1 || c.available_grade === null)
     : courses2022.filter(c => c.available_grade === 2 || c.available_grade === null)
-  const filtered = tab === '안내' ? [] : courses.filter(c => c.offering_type === tab)
+  const filtered = tab === '안내' ? [] : courses.filter(c => c.offering_type === '개설형')
 
   const grouped = filtered.reduce<Record<string, OnlineCourse[]>>((acc, c) => {
     const key = c.subject_group ?? '기타'
@@ -34,9 +35,7 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
     return acc
   }, {})
 
-  const groupEntries = tab === '개설형'
-    ? Object.entries(grouped).sort(([a], [b]) => subjectIndex(a) - subjectIndex(b))
-    : Object.entries(grouped)
+  const groupEntries = Object.entries(grouped).sort(([a], [b]) => subjectIndex(a) - subjectIndex(b))
 
   return (
     <div className="min-h-screen flex flex-col bg-white">
@@ -131,8 +130,8 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
           </div>
         )}
 
-        {/* 개설형 / 주문형 탭 */}
-        {(tab === '개설형' || tab === '주문형') && (
+        {/* 개설형 탭 */}
+        {tab === '개설형' && (
           <div>
             {/* 학년 선택 */}
             <div className="flex gap-3 mb-5">
@@ -207,6 +206,38 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
             )}
 
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
+              희망 과목 확인 후 <strong>담임 선생님께 신청</strong>해 주세요.
+              문의: 2층 3학년 교무실 이준희 선생님
+            </div>
+          </div>
+        )}
+
+        {/* 주문형 탭 */}
+        {tab === '주문형' && (
+          <div>
+            <div className="flex gap-3 mb-5">
+              {(['2015', '2022'] as const).map(y => (
+                <button
+                  key={y}
+                  onClick={() => setPdfYear(y)}
+                  className={`px-6 py-2.5 rounded-full text-base font-semibold border transition-colors ${
+                    pdfYear === y
+                      ? 'bg-green-700 text-white border-green-700'
+                      : 'text-gray-600 border-gray-300 hover:border-green-400'
+                  }`}
+                >
+                  {y}교과
+                </button>
+              ))}
+            </div>
+
+            <iframe
+              src={`/${pdfYear}교과.pdf`}
+              className="w-full rounded-lg border border-gray-200"
+              style={{ height: '800px' }}
+            />
+
+            <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
               희망 과목 확인 후 <strong>담임 선생님께 신청</strong>해 주세요.
               문의: 2층 3학년 교무실 이준희 선생님
             </div>
