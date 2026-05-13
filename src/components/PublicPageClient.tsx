@@ -121,10 +121,13 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
             <section className="bg-blue-50 border border-blue-200 rounded-xl p-6">
               <h2 className="text-lg font-bold text-blue-800 mb-2">신청 방법</h2>
               <p className="text-gray-700">
-                희망 과목 확인 후 <strong>담임 선생님께 신청</strong>하시면 됩니다.
+                희망 과목 확인 후 <strong>이준희 선생님에게 신청</strong>
               </p>
-              <p className="text-sm text-gray-500 mt-2">
-                문의: 2층 3학년 교무실 이준희 선생님
+              <p className="text-sm text-gray-500 mt-1">
+                신청 장소 : 2층 3학년 교무실
+              </p>
+              <p className="text-sm text-gray-500 mt-1">
+                기한 : 5월 29일 금요일 오후 4시 30분까지
               </p>
             </section>
           </div>
@@ -206,8 +209,9 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
             )}
 
             <div className="mt-8 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
-              희망 과목 확인 후 <strong>담임 선생님께 신청</strong>해 주세요.
-              문의: 2층 3학년 교무실 이준희 선생님
+              희망 과목 확인 후 <strong>이준희 선생님에게 신청</strong>
+              <br />신청 장소 : 2층 3학년 교무실
+              <br />기한 : 5월 29일 금요일 오후 4시 30분까지
             </div>
           </div>
         )}
@@ -238,8 +242,9 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
             />
 
             <div className="mt-6 p-4 bg-blue-50 border border-blue-200 rounded-xl text-sm text-blue-800">
-              희망 과목 확인 후 <strong>담임 선생님께 신청</strong>해 주세요.
-              문의: 2층 3학년 교무실 이준희 선생님
+              희망 과목 확인 후 <strong>이준희 선생님에게 신청</strong>
+              <br />신청 장소 : 2층 3학년 교무실
+              <br />기한 : 5월 29일 금요일 오후 4시 30분까지
             </div>
           </div>
         )}
