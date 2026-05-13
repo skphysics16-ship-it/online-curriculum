@@ -15,7 +15,7 @@ export interface TeacherSession {
 }
 
 export async function createToken(session: TeacherSession): Promise<string> {
-  return new SignJWT(session as Record<string, unknown>)
+  return new SignJWT(session as unknown as Record<string, unknown>)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('8h')

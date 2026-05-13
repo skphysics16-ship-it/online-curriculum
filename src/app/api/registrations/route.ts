@@ -21,7 +21,7 @@ async function findRegistrationRow(studentId: string, onlineCourseId: string): P
     if (r[sidIdx] === studentId && r[cidIdx] === onlineCourseId) {
       return {
         rowNum: i + 1,
-        row: Object.fromEntries(headers.map((h, j) => [h, r[j] ?? ''])) as RegRow,
+        row: Object.fromEntries(headers.map((h, j) => [h, r[j] ?? ''])) as unknown as RegRow,
       }
     }
   }
@@ -38,7 +38,7 @@ async function findRegistrationById(id: string): Promise<{ rowNum: number; row: 
     if (rows[i][idIdx] === id) {
       return {
         rowNum: i + 1,
-        row: Object.fromEntries(headers.map((h, j) => [h, rows[i][j] ?? ''])) as RegRow,
+        row: Object.fromEntries(headers.map((h, j) => [h, rows[i][j] ?? ''])) as unknown as RegRow,
       }
     }
   }

@@ -36,13 +36,13 @@ export function invalidateCache(...sheetNames: string[]) {
 }
 
 // 첫 행을 헤더로 사용해 객체 배열로 변환
-export function parseRows<T extends Record<string, string>>(rows: string[][]): T[] {
+export function parseRows<T>(rows: string[][]): T[] {
   if (rows.length < 2) return []
   const headers = rows[0]
   return rows
     .slice(1)
     .filter(row => row.some(Boolean))
-    .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ''])) as T)
+    .map(row => Object.fromEntries(headers.map((h, i) => [h, row[i] ?? ''])) as unknown as T)
 }
 
 // 시트 맨 아래에 행 추가
