@@ -213,7 +213,7 @@ async function importOnlineCourses(filePath: string) {
     const yearIdx = headers.indexOf('cohort_year')
     const openIdx = headers.indexOf('is_opened')
     scRows.slice(1).forEach(r => {
-      if (r[openIdx] === 'true') {
+      if (r[openIdx]?.toString().toLowerCase() === 'true') {
         if (r[yearIdx] === '2024') openedNames2024.add(r[nameIdx])
         else if (r[yearIdx] === '2025') openedNames2025.add(r[nameIdx])
       }
@@ -271,7 +271,7 @@ async function importOnlineCourses(filePath: string) {
     if (r[0]) currentGroup2022 = String(r[0])
     const courseName = r[2] ? cleanCourseName(String(r[2])) : null
     if (!courseName) return
-    const availGrade = r[4] ? 1 : r[5] ? 2 : null
+    const availGrade = (r[4] && !r[5]) ? 1 : (!r[4] && r[5]) ? 2 : null
     onlineRows.push([
       stableId(2022, courseName), courseName, currentGroup2022 || null,
       r[1] ? String(r[1]) : null, r[3] ? Number(r[3]) : null,

@@ -57,7 +57,7 @@ export async function GET(
   // 학교 개설 과목 (온라인 신청 불가)
   const openedNames = new Set(
     parseRows<SchoolRow>(schoolRows)
-      .filter(c => Number(c.cohort_year) === cohortYear && c.is_opened === 'true')
+      .filter(c => Number(c.cohort_year) === cohortYear && c.is_opened?.toLowerCase() === 'true')
       .map(c => c.course_name)
   )
 
@@ -74,7 +74,7 @@ export async function GET(
     available_grade: c.available_grade ? Number(c.available_grade) : null,
     available_semester: c.available_semester ? Number(c.available_semester) : null,
     // 시트에 컬럼이 없는 경우 school_courses에서 교차 검증
-    is_school_opened: c.is_school_opened === 'true' || openedNames.has(c.course_name),
+    is_school_opened: c.is_school_opened?.toLowerCase() === 'true' || openedNames.has(c.course_name),
   }))
 
   // 이수하지 않은 과목 (학교 개설 과목도 포함하여 신청 불가 표시 가능하도록)

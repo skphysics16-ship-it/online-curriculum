@@ -4,7 +4,7 @@ import { useState } from 'react'
 import type { OnlineCourse } from '@/types'
 
 type Tab = '안내' | '개설형' | '주문형'
-type Grade = '3학년(2015)' | '2학년(2022)'
+type Grade = '3학년(2015)' | '2학년(2022)' | '1학년(2022)'
 
 interface Props {
   courses2015: OnlineCourse[]
@@ -22,7 +22,9 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
   const [tab, setTab] = useState<Tab>('안내')
   const [grade, setGrade] = useState<Grade>('3학년(2015)')
 
-  const courses = grade === '3학년(2015)' ? courses2015 : courses2022
+  const courses = grade === '3학년(2015)' ? courses2015
+    : grade === '1학년(2022)' ? courses2022.filter(c => c.available_grade === 1 || c.available_grade === null)
+    : courses2022.filter(c => c.available_grade === 2 || c.available_grade === null)
   const filtered = tab === '안내' ? [] : courses.filter(c => c.offering_type === tab)
 
   const grouped = filtered.reduce<Record<string, OnlineCourse[]>>((acc, c) => {
@@ -134,7 +136,7 @@ export default function PublicPageClient({ courses2015, courses2022 }: Props) {
           <div>
             {/* 학년 선택 */}
             <div className="flex gap-3 mb-5">
-              {(['3학년(2015)', '2학년(2022)'] as Grade[]).map(g => (
+              {(['3학년(2015)', '2학년(2022)', '1학년(2022)'] as Grade[]).map(g => (
                 <button
                   key={g}
                   onClick={() => setGrade(g)}

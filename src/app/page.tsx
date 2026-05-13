@@ -25,7 +25,7 @@ export default async function HomePage() {
     prerequisite: r.prerequisite || null,
     available_grade: r.available_grade ? Number(r.available_grade) : null,
     available_semester: r.available_semester ? Number(r.available_semester) : null,
-    is_school_opened: r.is_school_opened === 'true',
+    is_school_opened: r.is_school_opened?.toLowerCase() === 'true',
   }))
 
   const sort = (a: OnlineCourse, b: OnlineCourse) =>
